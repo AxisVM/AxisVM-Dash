@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 import dash_bootstrap_components as dbc
-from dash import html
-from dash import dcc
+from dash import dcc, html
+import plotly.graph_objects as go
 
 
-__all__ = ['fig3d', 'fig2d', 'input_mat', 'input_load', 'input_res',
-           'input_geom', 'input_mesh']
+__all__ = ['layout']
 
 dofs = UZ, ROTX, ROTY = list(range(3))
 id_to_label = {UZ: 'UZ', ROTX: 'ROTX', ROTY: 'ROTY'}
@@ -232,3 +231,31 @@ def input_panel(**params):
             )
         ]
     )
+    
+
+def layout(**params):
+    # total width is 12 units
+    return html.Div([dbc.Container(
+        dbc.Row([
+            # left column
+            dbc.Col(
+                [
+                    html.H1(children='AxisVM Dash'),
+                    html.P(
+                        "An AxisVM dashboard.",
+                        className="lead",
+                    ),
+                    input_panel(**params)
+                ],
+                width=3
+            ),
+            # right column
+            dbc.Col(
+                [
+                    dcc.Graph(id='plot', figure=go.Figure()),
+                ],
+                width=9
+            ),
+        ]),
+        fluid=True,
+    )])

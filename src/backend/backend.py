@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from axisvm.com.client import start_AxisVM
 import axisvm.com.tlb as axtlb
 from axisvm.com.tlb import RSurfaceAttr, lnlTensionAndCompression, \
     RResistancesXYZ, schLinear, stPlate, RElasticFoundationXYZ, \
@@ -6,6 +7,17 @@ from axisvm.com.tlb import RSurfaceAttr, lnlTensionAndCompression, \
     RLoadDomainPolyArea, dtGlobal, ldtConst, RResistances, RNonLinearity, \
     RStiffnesses, dsGlobal, ndcEuroCode
 import numpy as np
+
+
+__all__ = ['solver', 'Sentinel', 'label_to_id']
+
+
+dofs = UZ, ROTX, ROTY = list(range(3))
+id_to_label = {UZ: 'UZ', ROTX: 'ROTX', ROTY: 'ROTY'}
+label_to_id = {value: key for key, value in id_to_label.items()}
+
+
+class Sentinel: ...
 
 
 def build(*args, axapp, axmodel, material, size, 
@@ -162,3 +174,31 @@ def get_results(*args, axmodel, **kwargs):
     res2d[2, :] = np.array(list(map(fnc_roty, dres)))
     
     return res2d
+
+
+def solver(in_queue, out_queue):
+    import comtypes
+    comtypes.CoInitialize()
+    axapp = start_AxisVM(visible=True, daemon=True)
+    while True:
+        # Get data
+        in_data = in_queue.get()
+        if isinstance(in_data, Sentinel):
+            break
+        print('New Problem!')
+        
+        # Process data
+        axapp.Models.New()  # cleans everything up
+        axmodel = axapp.Models[1]
+        build(axapp=axapp, axmodel=axmodel, **in_data)
+        coords, _ = generate_mesh(axmodel=axmodel, **in_data)
+        calculate(axmodel=axmodel, **in_data)
+        res2d = get_results(axmodel=axmodel)
+        
+        # Mark task as solved, optional
+        print('Problem Solved!')
+        in_queue.task_done()
+        
+        # Forward result to plotter
+        out_queue.put((in_data, coords, res2d))
+        print('Results Put!')
