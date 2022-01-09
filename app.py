@@ -2,16 +2,18 @@
 from axisvm.com.client import start_AxisVM
 from dewloosh.core.tools import float_to_str_sig
 from src.backend.backend import build, generate_mesh, calculate, get_results
-from src.frontend.components import fig2d, fig3d, input_mat, input_geom, \
-    input_mesh, input_load, input_res
+from src.frontend.components import input_panel
+from src.frontend.plotting import fig2d, fig3d
 import dash_bootstrap_components as dbc
 from dash import Dash as DashBoard, dcc, html, dash_table as dt
 from dash.dependencies import Input, Output, State
+import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
+from queue import Queue
+from threading import Thread
 
-
-axapp = start_AxisVM(visible=True, daemon=True)
+#comtypes.CoUninitialize()
 app = DashBoard(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 timeout = 300
@@ -45,74 +47,50 @@ params = {
                     'xx' : 0, 'yy' : 0, 'zz' : 0}
         },
     'meshsize' : 0.6,
-    'filename' : 'Modell.axs'
+    'filename' : 'Modell222.axs'
 }
 
 
-# initial solution
-if proj == '3d':
-    raise NotImplementedError
-elif proj == '2d':
-    build(axapp, **params)
-    coords, _ = generate_mesh(axapp, **params)
-    calculate(axapp, **params)
-    res2d = get_results(axapp)
-
-# figure
-if proj == '3d':
-    raise NotImplementedError
-elif proj == '2d':
-    fig = fig2d(coords, res2d[0, :], **params)
+coords, res2d = None, None
+_sentinel = object()
 
 
-navigation_panel = html.Div(
-    [
-        dbc.Accordion(
-            [
-                dbc.AccordionItem(
-                    [
-                        input_geom(**params),
-                    ],
-                    title="Geometry",
-                ),
-                dbc.AccordionItem(
-                    [
-                        input_mat(**params),
-                    ],
-                    title="Material",
-                ),
-                dbc.AccordionItem(
-                    [
-                        input_load(**params),
-                    ],
-                    title="Load",
-                ),
-                dbc.AccordionItem(
-                    [
-                        input_mesh(**params),
-                    ],
-                    title="Mesh",
-                ),
-                dbc.AccordionItem(
-                    [
-                        input_res(**params)
-                    ],
-                    title="Results",
-                ),
-            ],
-        ),
-        html.Br(),
-        dbc.Button(
-            "Calculate",
-            id='calc_button',
-            color="primary"
-        )
-    ]
-)
+def solver(in_queue, out_queue):
+    import comtypes
+    comtypes.CoInitialize()
+    axapp = start_AxisVM(visible=True, daemon=True)
+    while True:
+        # Get data
+        in_data = in_queue.get()
+        if in_data is _sentinel:
+            break
+        print('New Problem!')
+        
+        # Process data
+        axapp.Models.New()  # cleans everything up
+        axmodel = axapp.Models[1]
+        build(axapp=axapp, axmodel=axmodel, **in_data)
+        coords, _ = generate_mesh(axmodel=axmodel, **in_data)
+        calculate(axmodel=axmodel, **in_data)
+        res2d = get_results(axmodel=axmodel)
+        
+        # Mark task as solved, optional
+        print('Problem Solved!')
+        in_queue.task_done()
+        
+        # Forward result to plotter
+        out_queue.put((in_data, coords, res2d))
+        print('Results Put!')
+
+        
+solver_queue, plotter_queue = Queue(), Queue()
+solver_thread = Thread(target=solver, args=(solver_queue, plotter_queue))
+
 
 # total width is 12 units
 app.layout = html.Div([dbc.Container(
     dbc.Row([
+        # left column
         dbc.Col(
             [
                 html.H1(children='AxisVM Dash'),
@@ -120,14 +98,14 @@ app.layout = html.Div([dbc.Container(
                     "An AxisVM dashboard.",
                     className="lead",
                 ),
-                navigation_panel
+                input_panel(**params)
             ],
             width=3
         ),
-        
+        # right column
         dbc.Col(
             [
-                dcc.Graph(id='plot', figure=fig),
+                dcc.Graph(id='plot', figure=go.Figure()),
             ],
             width=9
         ),
@@ -141,14 +119,12 @@ app.layout = html.Div([dbc.Container(
     Input('component', 'value')
 )
 def update_figure(comp):
-    global res2d, params, coords
+    global plotter_queue, params, coords, res2d
+    if plotter_queue.qsize() > 0:
+        params, coords, res2d = plotter_queue.get()        
     dataId = label_to_id[comp]
-    cmap = "Viridis"
-    # figure
-    if proj == '3d':
-        raise NotImplementedError
-    elif proj == '2d':
-        fig = fig2d(coords, res2d[dataId, :], cmap=cmap, **params)
+    fig = fig2d(coords, res2d[dataId, :], cmap="Viridis", **params)
+    print('{} Plotted!'.format(comp))
     return fig
 
 
@@ -172,8 +148,9 @@ def update_figure(comp):
     # results
     State('component', 'value'),
 )
-def recalc(n_clicks, Lx, Ly, t, material, xc, yc, w, h, q, meshsize, comp):
-    global res2d, coords, params, axapp
+def recalc(n_clicks, Lx, Ly, t, material, 
+           xc, yc, w, h, q, meshsize, comp):
+    global params, solver_queue
     new_params = {
         'material' : material,
         'size' : (Lx, Ly),
@@ -183,19 +160,13 @@ def recalc(n_clicks, Lx, Ly, t, material, xc, yc, w, h, q, meshsize, comp):
         'meshsize' : meshsize,
     }
     params.update(new_params)
-    if proj == '3d':
-        raise NotImplementedError
-    elif proj == '2d':
-        build(axapp, **params)
-        coords, _ = generate_mesh(axapp, **params)
-        calculate(axapp, **params)
-        res2d = get_results(axapp)
+    solver_queue.put(params)
     return comp
 
 
 if __name__ == '__main__':
-    try: 
-        app.run_server(debug=True)
-    finally:
-        del axapp
-    
+    solver_thread.start()
+    app.run_server(debug=False)
+    solver_queue.put(_sentinel)
+    solver_queue.join() 
+    plotter_queue.join()

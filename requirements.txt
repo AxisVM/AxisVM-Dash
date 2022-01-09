@@ -5,5 +5,5 @@ dash-core-components
 dash-html-components
 dash-bootstrap-components
 pandas
-git+https://github.com/AxisVM/comtypes
+#git+https://github.com/AxisVM/comtypes
 axisvm

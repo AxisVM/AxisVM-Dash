@@ -8,10 +8,8 @@ from axisvm.com.tlb import RSurfaceAttr, lnlTensionAndCompression, \
 import numpy as np
 
 
-def build(axapp, *args, material, size, 
+def build(*args, axapp, axmodel, material, size, 
           thickness, load, support, **kwargs):
-    axapp.Models.New()  # cleans everything up
-    axmodel = axapp.Models[1]
     
     axmodel.Settings.NationalDesignCode = ndcEuroCode
     matId = axmodel.Materials.AddFromCatalog(ndcEuroCode, material) 
@@ -112,46 +110,40 @@ def build(axapp, *args, material, size,
                                              Resistances, i+1, 0, 0, 1, 0)
 
 
-def generate_mesh(axapp, *args, meshsize, **kwargs):
-    with axapp.Models[1] as axmodel:
-        # mesh
-        MeshParams = axtlb.RDomainMeshParameters(
-            MeshSize=meshsize,
-            MeshType=axtlb.mtUniform,
-            MeshGeometryType=axtlb.mgtTriangle,
-            IsFitToPointLoad=True,
-            FitToPointLoad=0.,  # fit to all loads
-            IsFitToSurfaceLoad=True,
-            FitToSurfaceLoad=0.,  # fit to all loads
-        )
-        axmodel.Domains[:].GenerateMesh(MeshParams)
+def generate_mesh(*args, axmodel, meshsize, **kwargs):    
+    # mesh
+    MeshParams = axtlb.RDomainMeshParameters(
+        MeshSize=meshsize,
+        MeshType=axtlb.mtUniform,
+        MeshGeometryType=axtlb.mgtTriangle,
+        IsFitToPointLoad=True,
+        FitToPointLoad=0.,  # fit to all loads
+        IsFitToSurfaceLoad=True,
+        FitToSurfaceLoad=0.,  # fit to all loads
+    )
+    axmodel.Domains[:].GenerateMesh(MeshParams)
         
-    with axapp.Models[1] as axmodel:
-        nIDs = [i+1 for i in range(len(axmodel.Nodes))]
-        
-        # coordinates of the nodes as a numpy array
-        coords = axmodel.Nodes.BulkGetCoord(nIDs)[0]
-        coords = np.array([[n.x, n.y, n.z] for n in coords])
+    # coordinates of the nodes as a numpy array
+    nIDs = [i+1 for i in range(len(axmodel.Nodes))]
+    coords = axmodel.Nodes.BulkGetCoord(nIDs)[0]
+    coords = np.array([[n.x, n.y, n.z] for n in coords])
 
-        # get the topology as a numpy array
-        def fnc(i): return axmodel.Surfaces.Item[i].GetContourPoints()[0]
-        sIDs = axmodel.Domains[1].MeshSurfaceIds
-        topo = np.vstack(list(map(fnc, sIDs))) - 1
+    # get the topology as a numpy array
+    def fnc(i): return axmodel.Surfaces.Item[i].GetContourPoints()[0]
+    sIDs = axmodel.Domains[1].MeshSurfaceIds
+    topo = np.vstack(list(map(fnc, sIDs))) - 1
     
     return coords, topo
 
 
-def calculate(axapp, *args, filename, **kwargs):
-    with axapp.Models[1] as axmodel:
-        # calculate
-        axmodel.SaveToFile(filename, False)
-        axmodel.Calculation.LinearAnalysis(
-            axtlb.cuiNoUserInteractionWithAutoCorrectNoShow)
+def calculate(*args, axmodel, filename, **kwargs):
+    # calculate
+    axmodel.SaveToFile(filename, False)
+    axmodel.Calculation.LinearAnalysis(
+        axtlb.cuiNoUserInteractionWithAutoCorrectNoShow)
 
 
-def get_results(axapp):
-    axmodel = axapp.Models[1]
-       
+def get_results(*args, axmodel, **kwargs):       
     # IDs of all the nodes in the model
     N = axmodel.Nodes.Count
     res2d = np.zeros((3, N))
@@ -168,4 +160,5 @@ def get_results(axapp):
     res2d[0, :] = np.array(list(map(fnc_ez, dres)))
     res2d[1, :] = np.array(list(map(fnc_rotx, dres)))
     res2d[2, :] = np.array(list(map(fnc_roty, dres)))
-    del dres
+    
+    return res2d

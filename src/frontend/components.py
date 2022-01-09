@@ -1,95 +1,14 @@
 # -*- coding: utf-8 -*-
-import plotly.figure_factory as ff
-import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
 from dash import html
 from dash import dcc
-import plotly.figure_factory as ff
-import plotly.graph_objects as go
+
 
 __all__ = ['fig3d', 'fig2d', 'input_mat', 'input_load', 'input_res',
            'input_geom', 'input_mesh']
 
 dofs = UZ, ROTX, ROTY = list(range(3))
 id_to_label = {UZ: 'UZ', ROTX: 'ROTX', ROTY: 'ROTY'}
-
-
-def fig3d(coords, triangles, res2d, cmap="Viridis", **params):
-    Lx = params['Lx']
-    Ly = params['Ly']
-    aspects = {'x': 1.0, 'y': Ly/Lx, 'z': 1.0}
-    fig = ff.create_trisurf(x=coords[:, 0], y=coords[:, 1], z=coords[:, 2],
-                            simplices=triangles, color_func=res2d,
-                            colormap=cmap, title='',
-                            aspectratio=aspects, showbackground=True)
-    fig.update_layout(transition_duration=500,
-                      scene=dict(
-                          annotations=[
-                              dict(
-                                  showarrow=False,
-                                  x=0.,
-                                  y=0.,
-                                  z=0.,
-                                  text="A",
-                                  xanchor="left",
-                                  font=dict(
-                                      color="black",
-                                      size=20
-                                  ),
-                              ),
-                              dict(
-                                  showarrow=False,
-                                  x=Lx,
-                                  y=0.,
-                                  z=0.,
-                                  text="B",
-                                  xanchor="left",
-                                  font=dict(
-                                      color="black",
-                                      size=20
-                                  ),
-                              ),
-                              dict(
-                                  showarrow=False,
-                                  x=Lx,
-                                  y=Ly,
-                                  z=0.,
-                                  text="C",
-                                  xanchor="left",
-                                  font=dict(
-                                      color="black",
-                                      size=20
-                                  ),
-                              ),
-                              dict(
-                                  showarrow=False,
-                                  x=0.,
-                                  y=Ly,
-                                  z=0.,
-                                  text="D",
-                                  xanchor="left",
-                                  font=dict(
-                                      color="black",
-                                      size=20
-                                  ),
-                              ),
-                          ]
-                      )
-                      )
-    return fig
-
-
-def fig2d(coords, res2d, **params):
-    zmin = res2d.min()
-    zmax = res2d.max()
-    fig = go.Figure(data=go.Contour(
-        x=coords[:, 0],
-        y=coords[:, 1],
-        z=res2d,
-        zmin=zmin, zmax=zmax
-    ))
-    fig['layout']['yaxis']['scaleanchor'] = 'x'
-    return fig
 
 
 def input_res(**params):
@@ -264,5 +183,52 @@ def input_mesh(**params):
                 ],
                 className="mb-3",
             ),
+        ]
+    )
+    
+    
+def input_panel(**params):
+    return html.Div(
+        [
+            dbc.Accordion(
+                [
+                    dbc.AccordionItem(
+                        [
+                            input_geom(**params),
+                        ],
+                        title="Geometry",
+                    ),
+                    dbc.AccordionItem(
+                        [
+                            input_mat(**params),
+                        ],
+                        title="Material",
+                    ),
+                    dbc.AccordionItem(
+                        [
+                            input_load(**params),
+                        ],
+                        title="Load",
+                    ),
+                    dbc.AccordionItem(
+                        [
+                            input_mesh(**params),
+                        ],
+                        title="Mesh",
+                    ),
+                    dbc.AccordionItem(
+                        [
+                            input_res(**params)
+                        ],
+                        title="Results",
+                    ),
+                ],
+            ),
+            html.Br(),
+            dbc.Button(
+                "Calculate",
+                id='calc_button',
+                color="primary"
+            )
         ]
     )
