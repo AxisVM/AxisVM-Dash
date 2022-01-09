@@ -184,6 +184,7 @@ def solver(in_queue, out_queue):
         # Get data
         in_data = in_queue.get()
         if isinstance(in_data, Sentinel):
+            in_queue.task_done()
             break
         print('New Problem!')
         
