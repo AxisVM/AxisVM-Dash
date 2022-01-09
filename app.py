@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-from src.backend import solver, Sentinel, label_to_id
+from src.backend import solver, Sentinel, \
+    label_to_id, id_to_label
 from src.frontend import layout, fig2d, gen_table_data
+import dash
 import dash_bootstrap_components as dbc
 from dash import Dash
 from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
 from queue import Queue
 from threading import Thread
 import plotly.graph_objects as go
@@ -28,19 +31,28 @@ params = {
                     'xx' : 0, 'yy' : 0, 'zz' : 0}
         },
     'meshsize' : 0.6,
-    'filename' : 'Modell222.axs'
+    'filename' : 'DashModel.axs'
 }
 
 
+coords, res2d, plot_id = None, None, None
+solver_queue, plotter_queue = Queue(), Queue()
+material_names = []
+solver_thread = Thread(target=solver, 
+                       args=(solver_queue, plotter_queue, 
+                             material_names),
+                       kwargs={'visible' : False})
+solver_thread.start()
+solver_queue.put(params)
+while plotter_queue.qsize() == 0:
+    pass
+params, coords, res2d = plotter_queue.get()
+
+
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-app.layout = layout(**params)
 server = app.server
 timeout = 300  # I use a large value here to give AxiVM enough time to wake up
-coords, res2d = None, None
-solver_queue, plotter_queue = Queue(), Queue()
-solver_thread = Thread(target=solver, 
-                       args=(solver_queue, plotter_queue),
-                       kwargs={'visible' : True})
+app.layout = layout(material_names=material_names, **params)
 
 
 @app.callback(
@@ -49,12 +61,10 @@ solver_thread = Thread(target=solver,
     Input('component', 'value')
 )
 def update(comp):
-    global plotter_queue, params, coords, res2d
-    if plotter_queue.qsize() > 0:
-        params, coords, res2d = plotter_queue.get()
+    global params, coords, res2d, plot_id
     if coords is not None and res2d is not None:        
-        dataId = label_to_id[comp]
-        fig = fig2d(coords, res2d[dataId, :], cmap="Viridis", **params)
+        plot_id = label_to_id[comp]
+        fig = fig2d(coords, res2d[plot_id, :], cmap="Viridis", **params)
     else:
         fig = go.Figure()
     table_data = gen_table_data(res2d=res2d, **params)
@@ -64,6 +74,7 @@ def update(comp):
 @app.callback(
     Output('component', 'value'),
     Input('calc_button', 'n_clicks'),
+    Input('table', 'active_cell'),
     # geom
     State('Lx', 'value'),
     State('Ly', 'value'),
@@ -80,10 +91,29 @@ def update(comp):
     State('meshsize', 'value'),
     # results
     State('component', 'value'),
+    prevent_initial_call=True    
 )
-def recalc(n_clicks, Lx, Ly, t, material, 
+def recalc(n_clicks, active_cell, Lx, Ly, t, material, 
            xc, yc, w, h, q, meshsize, comp):
-    global params, solver_queue
+    
+    # determine wich input fired
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        # we can get here from initial render
+        pass
+    else:
+        ctx_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if ctx_id == 'table':
+        # the user clicked on the table
+        global plot_id
+        if active_cell['row'] == plot_id:
+            # no need to update plot
+            raise PreventUpdate
+        comp = id_to_label[active_cell['row']]
+        return comp
+    
+    # if we are here, the user clicked on 'Calculate'
+    global params, solver_queue, plotter_queue, coords, res2d
     new_params = {
         'material' : material,
         'size' : (Lx, Ly),
@@ -94,11 +124,13 @@ def recalc(n_clicks, Lx, Ly, t, material,
     }
     params.update(new_params)
     solver_queue.put(params)
+    while plotter_queue.qsize() == 0:
+        pass
+    params, coords, res2d = plotter_queue.get()
     return comp
 
 
 if __name__ == '__main__':
-    solver_thread.start()
     app.run_server(debug=False)
     solver_queue.put(Sentinel())
     solver_thread.join()

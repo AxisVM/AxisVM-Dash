@@ -25,6 +25,24 @@ def input_res(**params):
     )
 
 
+def input_mat(*args, material_names=None, **params):
+    material = params['material']
+    if material_names is None:
+        material_names = [material,]
+    return html.Div(
+        [
+            dcc.Dropdown(
+                id='material',
+                options=[{'label': m,
+                          'value': m}
+                         for m in material_names],
+                value=material
+            ),
+        ]
+    )
+
+
+"""
 def input_mat(**params):
     material = params['material']
     return html.Div(
@@ -41,7 +59,7 @@ def input_mat(**params):
             ),
         ]
     )
-
+"""
 
 def input_geom(**params):
     Lx, Ly = params['size']
@@ -159,7 +177,7 @@ def input_load(**params):
                         placeholder="load intensity",
                         type="number",
                         value=q),
-                    dbc.InputGroupText("kN/cm2"),
+                    dbc.InputGroupText("kN/m2"),
                 ],
                 className="mb-3",
             ),

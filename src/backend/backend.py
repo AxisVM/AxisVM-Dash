@@ -9,7 +9,8 @@ from axisvm.com.tlb import RSurfaceAttr, lnlTensionAndCompression, \
 import numpy as np
 
 
-__all__ = ['solver', 'Sentinel', 'dofs', 'id_to_label', 'label_to_id']
+__all__ = ['solver', 'Sentinel', 'dofs', 'id_to_label', 'label_to_id', \
+    'get_material_names']
 
 
 dofs = UZ, ROTX, ROTY = list(range(3))
@@ -122,6 +123,10 @@ def build(*args, axapp, axmodel, material, size,
                                              Resistances, i+1, 0, 0, 1, 0)
 
 
+def get_material_names(*args, axapp, **kwargs):
+    return axapp.Catalog.GetMaterialNames(ndcEuroCode)[0]
+
+
 def generate_mesh(*args, axmodel, meshsize, **kwargs):    
     # mesh
     MeshParams = axtlb.RDomainMeshParameters(
@@ -176,10 +181,11 @@ def get_results(*args, axmodel, **kwargs):
     return res2d
 
 
-def solver(in_queue, out_queue, visible=True):
+def solver(in_queue, out_queue, material_names, visible=True):
     import comtypes
     comtypes.CoInitialize()
     axapp = start_AxisVM(visible=visible, daemon=True)
+    material_names.extend(get_material_names(axapp=axapp))
     while True:
         # Get data
         in_data = in_queue.get()
