@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from src.backend import solver, Sentinel, label_to_id
-from src.frontend import layout, fig2d
+from src.frontend import layout, fig2d, gen_table_data
 import dash_bootstrap_components as dbc
 from dash import Dash
 from dash.dependencies import Input, Output, State
@@ -35,32 +35,36 @@ params = {
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.layout = layout(**params)
 server = app.server
-timeout = 300
+timeout = 300  # I use a large value here to give AxiVM enough time to wake up
 coords, res2d = None, None
 solver_queue, plotter_queue = Queue(), Queue()
-solver_thread = Thread(target=solver, args=(solver_queue, plotter_queue))
+solver_thread = Thread(target=solver, 
+                       args=(solver_queue, plotter_queue),
+                       kwargs={'visible' : True})
 
 
 @app.callback(
     Output('plot', 'figure'),
+    Output('table', 'data'),
     Input('component', 'value')
 )
-def update_figure(comp):
+def update(comp):
     global plotter_queue, params, coords, res2d
     if plotter_queue.qsize() > 0:
         params, coords, res2d = plotter_queue.get()
-    if res2d is not None:        
+    if coords is not None and res2d is not None:        
         dataId = label_to_id[comp]
         fig = fig2d(coords, res2d[dataId, :], cmap="Viridis", **params)
-        print('{} Plotted!'.format(comp))
-        return fig
-    return go.Figure()
+    else:
+        fig = go.Figure()
+    table_data = gen_table_data(res2d=res2d, **params)
+    return fig, table_data.to_dict('records')
 
 
 @app.callback(
     Output('component', 'value'),
     Input('calc_button', 'n_clicks'),
-    #geom
+    # geom
     State('Lx', 'value'),
     State('Ly', 'value'),
     State('t', 'value'),

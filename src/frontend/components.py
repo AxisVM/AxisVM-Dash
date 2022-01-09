@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import dash_bootstrap_components as dbc
-from dash import dcc, html
+from dash import dcc, html, dash_table
 import plotly.graph_objects as go
+import pandas as pd
+from .utils import float_to_str_sig
+from ..backend import dofs, id_to_label, label_to_id
 
 
-__all__ = ['layout']
-
-dofs = UZ, ROTX, ROTY = list(range(3))
-id_to_label = {UZ: 'UZ', ROTX: 'ROTX', ROTY: 'ROTY'}
+__all__ = ['layout', 'gen_table_data']
 
 
 def input_res(**params):
@@ -233,8 +233,24 @@ def input_panel(**params):
     )
     
 
+def gen_table_data(*args, res2d=None, sig=6, atol=1e-10, **kwargs):
+    def pprint(x): return float_to_str_sig(x, sig=sig, atol=atol)
+    tbldata = []
+    if res2d is not None:
+        for comp, ind in label_to_id.items():
+            tbldata.append([comp, 
+                            pprint(res2d[ind].min()), 
+                            pprint(res2d[ind].max())])
+    else:
+        for comp, ind in label_to_id.items():
+            tbldata.append([comp, 'nan', 'nan'])
+    return pd.DataFrame(tbldata, columns=['', 'min', 'max'])
+    
+
 def layout(**params):
     # total width is 12 units
+    table_data = gen_table_data(**params)
+    columns=[{"name": i, "id": i} for i in table_data.columns]
     return html.Div([dbc.Container(
         dbc.Row([
             # left column
@@ -253,6 +269,11 @@ def layout(**params):
             dbc.Col(
                 [
                     dcc.Graph(id='plot', figure=go.Figure()),
+                    dash_table.DataTable(
+                        id='table', 
+                        data=table_data.to_dict('records'),
+                        columns=columns,
+                    ),
                 ],
                 width=9
             ),

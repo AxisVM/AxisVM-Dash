@@ -9,7 +9,7 @@ from axisvm.com.tlb import RSurfaceAttr, lnlTensionAndCompression, \
 import numpy as np
 
 
-__all__ = ['solver', 'Sentinel', 'label_to_id']
+__all__ = ['solver', 'Sentinel', 'dofs', 'id_to_label', 'label_to_id']
 
 
 dofs = UZ, ROTX, ROTY = list(range(3))
@@ -176,10 +176,10 @@ def get_results(*args, axmodel, **kwargs):
     return res2d
 
 
-def solver(in_queue, out_queue):
+def solver(in_queue, out_queue, visible=True):
     import comtypes
     comtypes.CoInitialize()
-    axapp = start_AxisVM(visible=True, daemon=True)
+    axapp = start_AxisVM(visible=visible, daemon=True)
     while True:
         # Get data
         in_data = in_queue.get()
