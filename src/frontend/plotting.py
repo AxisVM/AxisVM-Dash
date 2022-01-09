@@ -77,5 +77,9 @@ def fig2d(coords, res2d, **params):
         z=res2d,
         zmin=zmin, zmax=zmax
     ))
+    fig['layout']['xaxis']['showticklabels'] = False
     fig['layout']['yaxis']['scaleanchor'] = 'x'
+    fig['layout']['yaxis']['showticklabels'] = False
+    fig['layout']['paper_bgcolor']= 'white'
+    fig['layout']['plot_bgcolor'] = 'white'
     return fig

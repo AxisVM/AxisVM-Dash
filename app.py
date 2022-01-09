@@ -49,7 +49,7 @@ while plotter_queue.qsize() == 0:
 params, coords, res2d = plotter_queue.get()
 
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(__name__, external_stylesheets=[dbc.themes.ZEPHYR])
 server = app.server
 timeout = 300  # I use a large value here to give AxiVM enough time to wake up
 app.layout = layout(material_names=material_names, **params)
@@ -131,6 +131,8 @@ def recalc(n_clicks, active_cell, Lx, Ly, t, material,
 
 
 if __name__ == '__main__':
-    app.run_server(debug=False)
-    solver_queue.put(Sentinel())
-    solver_thread.join()
+    try:
+        app.run_server(debug=False, port=8888)
+    finally:
+        solver_queue.put(Sentinel())
+        solver_thread.join()

@@ -10,6 +10,9 @@ from ..backend import dofs, id_to_label, label_to_id
 __all__ = ['layout', 'gen_table_data']
 
 
+AXISVM_LOGO = "https://images.plot.ly/logo/new-branding/plotly-logomark.png"
+
+
 def input_res(**params):
     return html.Div(
         [
@@ -41,25 +44,6 @@ def input_mat(*args, material_names=None, **params):
         ]
     )
 
-
-"""
-def input_mat(**params):
-    material = params['material']
-    return html.Div(
-        [
-            dbc.InputGroup(
-                [
-                    dbc.Input(
-                        id='material',
-                        placeholder="material",
-                        type="text",
-                        value=material),
-                ],
-                className="mb-3",
-            ),
-        ]
-    )
-"""
 
 def input_geom(**params):
     Lx, Ly = params['size']
@@ -265,36 +249,109 @@ def gen_table_data(*args, res2d=None, sig=6, atol=1e-10, **kwargs):
     return pd.DataFrame(tbldata, columns=['', 'min', 'max'])
     
 
+def navigation_bar():
+    nav_item = dbc.NavItem(dbc.NavLink("Link", href="#"))
+    dropdown = dbc.DropdownMenu(
+        children=[
+            dbc.DropdownMenuItem("Entry 1"),
+            dbc.DropdownMenuItem("Entry 2"),
+            dbc.DropdownMenuItem(divider=True),
+            dbc.DropdownMenuItem("Entry 3"),
+        ],
+        nav=True,
+        in_navbar=True,
+        label="Menu",
+    )
+    return dbc.Navbar(
+        dbc.Container(
+            [
+                html.A(
+                    # Use row and col to control vertical alignment of logo / brand
+                    dbc.Row(
+                        [
+                            dbc.Col(html.Img(src=AXISVM_LOGO, height="30px")),
+                            dbc.Col(dbc.NavbarBrand("AxisVM Dash", className="ms-2")),
+                        ],
+                        align="center",
+                        className="g-0",
+                    ),
+                    href="https://axisvm.eu",
+                    style={"textDecoration": "none"},
+                ),
+                dbc.NavbarToggler(id="navbar-toggler", n_clicks=0),
+                dbc.Collapse(
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                dbc.Input(type="search", placeholder="Search")
+                            ),
+                            dbc.Col(
+                                dbc.Button(
+                                    "Search", color="primary", className="ms-2"
+                                ),
+                                # set width of button column to auto to allow
+                                # search box to take up remaining space.
+                                width="auto",
+                            ),
+                            dbc.Col(
+                                dbc.Nav(
+                                    [nav_item, dropdown],
+                                    className="ms-auto",
+                                    navbar=True,
+                                ),
+                            )
+                        ],
+                        # add a top margin to make things look nice when the navbar
+                        # isn't expanded (mt-3) remove the margin on medium or
+                        # larger screens (mt-md-0) when the navbar is expanded.
+                        # keep button and search box on same row (flex-nowrap).
+                        # align everything on the right with left margin (ms-auto).
+                        className="g-0 ms-auto flex-nowrap mt-3 mt-md-0",
+                        align="center",
+                    ),
+                    
+                    id="navbar-collapse",
+                    navbar=True,
+                ),
+            ],
+        ),
+        color="dark",
+        dark=True,
+        className="mb-5",
+    )
+
+
 def layout(**params):
     # total width is 12 units
     table_data = gen_table_data(**params)
     columns=[{"name": i, "id": i} for i in table_data.columns]
-    return html.Div([dbc.Container(
-        dbc.Row([
-            # left column
-            dbc.Col(
-                [
-                    html.H1(children='AxisVM Dash'),
-                    html.P(
-                        "An AxisVM dashboard.",
-                        className="lead",
-                    ),
-                    input_panel(**params)
-                ],
-                width=3
-            ),
-            # right column
-            dbc.Col(
-                [
-                    dcc.Graph(id='plot', figure=go.Figure()),
-                    dash_table.DataTable(
-                        id='table', 
-                        data=table_data.to_dict('records'),
-                        columns=columns,
-                    ),
-                ],
-                width=9
-            ),
-        ]),
-        fluid=True,
-    )])
+    return html.Div(
+        children =
+            [
+                navigation_bar(),
+                
+                html.Div([
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    input_panel(**params)
+                                ],
+                                width=3
+                                ),
+                            dbc.Col(
+                                [
+                                    dcc.Graph(id='plot', figure=go.Figure()),
+                                    dash_table.DataTable(
+                                        id='table', 
+                                        data=table_data.to_dict('records'),
+                                        columns=columns,
+                                    ),
+                                ],
+                                width=9
+                                ),
+                        ]
+                        ),
+                    ], style={'padding': '0px 20px 20px 20px'}), # top, right, bottom, left
+                ]
+        )
