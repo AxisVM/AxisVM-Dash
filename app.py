@@ -19,7 +19,7 @@ params = {
     'thickness' : 0.2,
     'load' : {'xc' : 5., 'yc' : 4., 
               'w' : .5, 'h' : 1., 
-              'q' : -2.0},
+              'q' : -200.0},
     'support' : {
         'left' : {'x' : 1e12, 'y' : 1e12, 'z' : 1e12, 
                   'xx' : 0, 'yy' : 0, 'zz' : 0},
@@ -52,7 +52,8 @@ params, coords, res2d = plotter_queue.get()
 app = Dash(__name__, external_stylesheets=[dbc.themes.ZEPHYR])
 server = app.server
 timeout = 300  # I use a large value here to give AxiVM enough time to wake up
-app.layout = layout(material_names=material_names, **params)
+logo_src = app.get_asset_url('AxisVM-logo.png')
+app.layout = layout(material_names=material_names, logo_src=logo_src, **params)
 
 
 @app.callback(

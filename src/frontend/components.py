@@ -249,7 +249,7 @@ def gen_table_data(*args, res2d=None, sig=6, atol=1e-10, **kwargs):
     return pd.DataFrame(tbldata, columns=['', 'min', 'max'])
     
 
-def navigation_bar():
+def navigation_bar(*args, logo_src=None, **params):
     nav_item = dbc.NavItem(dbc.NavLink("Link", href="#"))
     dropdown = dbc.DropdownMenu(
         children=[
@@ -269,7 +269,7 @@ def navigation_bar():
                     # Use row and col to control vertical alignment of logo / brand
                     dbc.Row(
                         [
-                            dbc.Col(html.Img(src=AXISVM_LOGO, height="30px")),
+                            dbc.Col(html.Img(src=logo_src, height="30px")),
                             dbc.Col(dbc.NavbarBrand("AxisVM Dash", className="ms-2")),
                         ],
                         align="center",
@@ -321,14 +321,14 @@ def navigation_bar():
     )
 
 
-def layout(**params):
+def layout(*args, logo_src=None, **params):
     # total width is 12 units
     table_data = gen_table_data(**params)
     columns=[{"name": i, "id": i} for i in table_data.columns]
     return html.Div(
         children =
             [
-                navigation_bar(),
+                navigation_bar(logo_src=logo_src),
                 
                 html.Div([
                     dbc.Row(
