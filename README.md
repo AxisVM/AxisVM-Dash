@@ -3,9 +3,7 @@ Template repo for interactive dashboards using AxisVM as a batch process.
 
 This repository does not accept pull request, **use it as a template to start new projects.** 
 
-![Alt text](capture.png?raw=true "Title")
-
-![alt text](https://github.com/AxisVM/AxisVM-Dash/blob/main/capture.png?raw=true)
+![Screenshot](capture.png)
 
 ## **Overview**
 
