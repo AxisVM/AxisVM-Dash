@@ -5,6 +5,8 @@ This repository does not accept pull request, **use it as a template to start ne
 
 ![Alt text](capture.png?raw=true "Title")
 
+![alt text](https://github.com/AxisVM/AxisVM-Dash/blob/main/capture.png?raw=true)
+
 ## **Overview**
 
 The repo contains a minimal webapp built with Plotly Dash. It provides examples to almost all basic components necessary to build interactive webapps with high-quality visualizations of AxisVM calculations, such as
